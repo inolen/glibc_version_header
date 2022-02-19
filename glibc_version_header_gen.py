@@ -37,11 +37,16 @@ def extract_versions_from_installed_folder(folder, version, arch):
         # default version.
         # See https://web.archive.org/web/20170124195801/https://www.akkadia.org/drepper/symbol-versioning section Static Linker
         command = "readelf -Ws '" + f + "' | grep \" [^ ]*@@GLIBC_[0-9.]*$\" -o"
-        file_data = [x.decode("utf-8").strip() for x in
-                     subprocess.check_output(['/bin/bash', '-c', 'set -o pipefail; ' + command]).split()]
+
+        try:
+          output = subprocess.check_output(['/bin/bash', '-c', 'set -o pipefail; ' + command])
+        except subprocess.CalledProcessError as e:
+          continue
+
+        file_data = [x.decode("utf-8").strip() for x in output.split()]
 
         library_name = f.split("/")[-1]
-        if Version(2, 17) <= version <= Version(2, 27):
+        if Version(2, 17) <= version <= Version(2, 28):
             # These are defined in both librt and libc, at different versions. file rt/Versions in
             # glibc source refers to them being moved from librt to libc,
             # but left behind for backwards compatibility
@@ -355,6 +360,7 @@ SUPPORTED_VERSIONS = [
     Version(2, 25),
     Version(2, 26),
     Version(2, 27),
+    Version(2, 28),
 ]
 
 
@@ -365,7 +371,7 @@ def main():
     parser.add_argument('-v', '--version', type=str, help='compile only specific glibc version', action='append',
                         choices=[v.version_as_str() for v in SUPPORTED_VERSIONS])
     parser.add_argument('-a', '--arch', type=str, help='compile for specific processor architecture',
-                        choices=['x86', 'x64'], default='x64')
+                        choices=['a32', 'a64', 'x86', 'x64'], default='x64')
     args = parser.parse_args()
 
     if args.version:
